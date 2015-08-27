@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+##################################################################################
+## Requires the following
+## 1. A MySQL configuration to be defined using mysql_config_editor.  Ex:
+##    mysql_config_editor set --login-path=example --host=localhost --user=myuser --password
+##
+## 2. The s3cmd tool installed & configured with a user with upload permissions. 
+##    Must be a newer version that supports the multipart-chunk-size option
+##################################################################################
+
+## These are the default settings used if not passed in via the options.  Change if desired.
+LOGINPATH=localbackup
+LOCALDIR=/var/mysqlbackup
+LOCALEXPIRE=3
+DATABASES=all
+S3BUCKET=
+CHUNKSIZEMB=100
+DIRPREFIX=mysqldump_to_s3
+
+##################################################################################
+## Nothing below here should need changed for normal cases
+##################################################################################
+usage()
+{
+cat << EOF
+usage: $0 options
+
+This script is used to backup a MySQL database server using mysqldump and then store the compressed files in S3.  It requires the following:
+
+1. A MySQL configuration to be defined using mysql_config_editor.  Ex:
+   mysql_config_editor set --login-path=example --host=localhost --user=myuser --password
+
+2. The s3cmd tool installed & configured with a user with upload permissions. Must be a newer version that supports the multipart-chunk-size option.
+
+OPTIONS:
+   -h   Show this message
+   -s   S3 Bucket name (required)
+   -u   MySQL --login-path name (default: localbackup)
+   -d   Local backup directory (default: /var/mysqlbackup)
+   -b   Space separated list of databases or 'all' for all in one dump file (default: all)
+   -e   Expiration of local backups in days (default: 3)
+EOF
+}
+
+while getopts "hu:d:b:e:s:" OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         u)
+             LOGINPATH=$OPTARG
+             ;;
+         d)
+             LOCALDIR=$OPTARG
+             ;;
+         b)
+             DATABASES=$OPTARG
+             ;;
+         s)
+             S3BUCKET=$OPTARG
+             ;;
+         e)
+             LOCALEXPIRE=$OPTARG
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+
+if [[ -z $LOGINPATH ]] || [[ -z $LOCALDIR ]] || [[ -z $DATABASES ]] || [[ -z $S3BUCKET ]] || [[ -z $LOCALEXPIRE ]]
+then
+     usage
+     exit 1
+fi
+
+CURRENT=$DIRPREFIX-`date +'%Y%m%d_%H%M%S'`
+BACKUPDIR="$LOCALDIR/$CURRENT"
+
+echo "+---- Starting backup process at `date +'%Y-%m-%d %H:%M:%S'` ----+"
+echo "Creating backup directory $BACKUPDIR"
+mkdir -p $BACKUPDIR
+
+if [ $DATABASES = 'all' ]
+then
+    # Backup all databases in one shot
+    BACKUPFILE="$BACKUPDIR/all_dbs.sql.gz"
+    echo "Backing up all databases and compressing as $BACKUPFILE"
+    mysqldump --login-path=$LOGINPATH --all-databases | gzip > $BACKUPFILE
+else
+    # Backup all the databases in the list
+    for DB in $DATABASES
+    do
+        BACKUPFILE="$BACKUPDIR/$DB.sql.gz"
+        echo "Backing up database $DB and compressing as $BACKUPFILE"
+        mysqldump --login-path=$LOGINPATH $DB | gzip > $BACKUPFILE
+    done
+fi
+
+echo "Syncing directory $BACKUPDIR to S3 bucket $S3BUCKET"
+s3cmd --multipart-chunk-size-mb=$CHUNKSIZEMB sync $BACKUPDIR s3://$S3BUCKET
+
+echo "Purging local directory $LOCALDIR to $LOCALEXPIRE days"
+find $LOCALDIR -maxdepth 1 -type d -name '$DIRPREFIX*' -mtime +$LOCALEXPIRE -exec rm -rf {} \;
+
+echo "+---- Backup process finished at `date +'%Y-%m-%d %H:%M:%S'` ----+"
+exit 0;
