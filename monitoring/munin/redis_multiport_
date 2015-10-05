@@ -1,0 +1,201 @@
+#!/usr/bin/perl -w
+#
+## redis_multiport_
+##
+## Copyright (C) 2015 KISS IT Consulting <http://www.kissitconsulting.com/>
+##
+## This program is free software; you can redistribute it and/or
+## modify it under the terms of the GNU General Public License
+## as published by the Free Software Foundation; version 2 dated June,
+## 1991.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## This is a munin plugin to graph multiple redis instances running on different ports on the same system (probably a cluster).
+## The goal was to have all ports combined on single graphs instead of having a separate graph for each port.
+## It is based on this redis module: http://munin-monitoring.org/browser/munin-contrib/plugins/redis/redis_ with modifications
+## made to support this concept.  Note that not all graph types were carried forward since they didn't make alot of sense in
+## my use case.
+##
+## Installation process:
+##
+## 1. Download the plugin to your plugins directory (e.g. /usr/share/munin/plugins)
+## 2. Create 3 symlinks at the directory that us used by munin for plugins detection (e.g. /etc/munin/plugins): 
+##      redis_multiport_connected_clients, 
+##      redis_multiport_per_sec and
+##      redis_multiport_keys_per_sec
+##      redis_multiport_used_memory
+## 3. Create a config file (/etc/munin/plugin-conf.d/redis) and configure as needed.  For example:
+##      [redis*]
+##      env.host 127.0.0.1
+##      env.ports 5000,5001,5002
+##      env.password <password>  --Only if you need a password  
+## 4. Restart munin-node service
+##
+
+use strict;
+use IO::Socket::INET;
+use Switch;
+
+## Options provided via configuration file.
+my $HOST = exists $ENV{'host'} ? $ENV{'host'} : "127.0.0.1";
+my $PORTS = exists $ENV{'ports'} ? $ENV{'ports'} : 6379;
+my $PASSWORD = exists $ENV{'password'} ? $ENV{'password'} : undef;
+
+## Ports can either be a single port or a list of ports separated by commas so remove any spaces that may have been included before parsing.
+$PORTS =~ s/\s//g;
+my @ports = split(',', $PORTS);
+
+## Split out our graph name
+$0 =~ s/(.+)redis_multiport_//g;
+
+## If script is called with the 'config' argument
+my $config = ( defined $ARGV[0] and $ARGV[0] eq "config" );
+
+## Now loop over our ports and get the data for each
+my $all;
+foreach my $port (@ports) {
+    my $sock = &get_conn($port);
+    $all->{$port} = &get_info($sock);
+    close ($sock);
+}
+
+## And output whats needed based on the graph name and options
+my $counter = 0;
+switch ($0) {
+    case "connected_clients" {
+        foreach my $port (@ports) {
+            if ($config) {
+                if($counter == 0) {
+                    print "graph_title Connected clients by port\n";
+                    print "graph_vlabel Connected clients\n";
+                    print "graph_category redis\n";
+                    print "graph_args -l 0\n";
+                    print "graph_scale no\n";
+                    print "graph_total Total clients\n";
+                }
+                print "connected_clients_$port.label connected clients $port\n";
+            } else {
+                print "connected_clients_$port.value " . $all->{$port}->{'connected_clients'} . "\n";
+            }
+            $counter = $counter + 1;
+        }
+    }
+
+    case "per_sec" {
+        if ($config) {
+            print "graph_title Per second combined\n";
+            print "graph_vlabel per \${graph_period}\n";
+            print "graph_category redis\n";
+            print "graph_args -l 0\n";
+            print "requests.label requests\n";
+            print "requests.type COUNTER\n";
+            print "connections.label connections\n";
+            print "connections.type COUNTER\n";
+        } else {
+            my $total_commands = 0;
+            my $total_connections = 0;
+            foreach my $port (@ports) {
+                $total_commands = $total_commands + $all->{$port}->{'total_commands_processed'};
+                $total_connections = $total_connections + $all->{$port}->{'total_connections_received'};
+            }
+            print "requests.value $total_commands\n";
+            print "connections.value $total_connections\n";
+        }
+    }
+
+    case "keys_per_sec" {
+        if ( $config ) {
+            print "graph_title Keys per second combined\n";
+            print "graph_vlabel per \${graph_period}\n";
+            print "graph_category redis\n";
+            print "graph_args -l 0\n";
+            print "hits.label hits\n";
+            print "hits.type COUNTER\n";
+            print "misses.label misses\n";
+            print "misses.type COUNTER\n";
+            print "expired.label expirations\n";
+            print "expired.type COUNTER\n";
+            print "evictions.label evictions\n";
+            print "evictions.type COUNTER\n";
+            exit 0;
+        } else {
+            my $keyspace_hits = 0;
+            my $keyspace_misses = 0;
+            my $expired_keys = 0;
+            my $evicted_keys = 0;
+            foreach my $port (@ports) {
+                $keyspace_hits = $keyspace_hits + $all->{$port}->{'keyspace_hits'};
+                $keyspace_misses = $keyspace_misses + $all->{$port}->{'keyspace_misses'};
+                $expired_keys = $expired_keys + $all->{$port}->{'expired_keys'};
+                $evicted_keys = $evicted_keys + $all->{$port}->{'evicted_keys'};
+            }
+            print "hits.value $keyspace_hits\n";
+            print "misses.value $keyspace_misses\n";
+            print "expired.value $expired_keys\n";
+            print "evictions.value $evicted_keys\n";   
+        }
+    }
+
+    case "used_memory" {
+        if ( $config ) {
+            print "graph_title Used memory combined\n";
+            print "graph_vlabel Used memory\n";
+            print "graph_category redis\n";
+            print "graph_args -l 0 --base 1024\n";
+            print "used_memory.label used memory\n";
+            print "used_memory_peak.label used memory in peak\n";
+            print "used_memory_rss.label Resident set size memory usage\n";
+        } else {
+            my $used_memory = 0;
+            my $used_memory_rss = 0;
+            my $used_memory_peak = 0;
+            foreach my $port (@ports) {
+                $used_memory = $used_memory + $all->{$port}->{'used_memory'};
+                $used_memory_rss = $used_memory_rss + $all->{$port}->{'used_memory_rss'};
+                $used_memory_peak = $used_memory_peak + $all->{$port}->{'used_memory_peak'};
+            }
+            print "used_memory.value $used_memory\n";
+            print "used_memory_rss.value $used_memory_rss\n";
+            print "used_memory_peak.value $used_memory_peak\n";
+        }
+    }
+}
+exit 0;
+
+############## Subs ##############
+sub get_conn {
+    my $sock = IO::Socket::INET->new(
+        PeerAddr => $HOST,
+        PeerPort => $_[0],
+        Timeout => 10,
+        Proto => 'tcp'
+    );
+    if ( defined( $PASSWORD )  ) {
+        print $sock "AUTH ", $PASSWORD, "\r\n";
+        my $result = <$sock> || die "can't read socket: $!";
+    }
+    return $sock;
+}
+
+sub get_info{
+    my $sock = $_[0];
+    print $sock "INFO\r\n";
+    my $result = <$sock> || die "can't read socket: $!";
+
+    my $rep;
+    # +2 characters for \r\n at end of the data block
+    read($sock, $rep, substr($result,1)+2) || die "can't read from socket: $!";
+
+    my $hash;
+    foreach (split(/\r\n/, substr($rep, 0, -2))) {
+        my ($key,$val) = split(/:/, $_, 2);
+        if (defined($key)) {
+            $hash->{$key} = $val;
+        }
+    }
+    return $hash;
+}
