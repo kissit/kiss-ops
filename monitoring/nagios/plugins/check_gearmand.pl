@@ -50,8 +50,7 @@ GetOptions($options, "k=s", "H=s", "r=i", "w=i", "c=i", "help");
 
 if (defined $options->{'help'}) {
         print <<INFO;
-$0: Check the status of gearmand job queues. {
-}.
+$0: Check the status of gearmand job queues.
 
  check_gearmand.pl -k workername [ -H <hostname> ] [ -r <port> ] [ -w <warning> ] [ -c <critical> ]
 
