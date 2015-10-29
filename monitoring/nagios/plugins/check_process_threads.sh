@@ -97,7 +97,7 @@ if [ -n "$PIDFILE" ]; then
     fi
 else
     # Try to find the PID from the process name.
-    PIDCHECK=`pgrep -fo $PROCNAME`
+    PIDCHECK=`pgrep -o $PROCNAME`
 fi
 
 if [[ -z $PIDCHECK ]]; then
