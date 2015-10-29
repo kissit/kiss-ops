@@ -92,7 +92,7 @@ if [ -n "$PIDFILE" ]; then
     if [ -r "$PIDFILE" ]; then
         PIDCHECK=`cat $PIDFILE`
     else
-        echo "ERROR: PID File cannot be read"
+        echo "CRITICAL: PID File not found, is the process running?"
         exit 2;
     fi
 else
