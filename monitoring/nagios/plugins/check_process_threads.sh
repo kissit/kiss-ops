@@ -105,7 +105,10 @@ if [[ -z $PIDCHECK ]]; then
     exit 2;
 else
     THREADS=`ps -T -p $PIDCHECK | sed 1d | wc -l`
-    if [ "$THREADS" -ge "$CRIT" ]; then
+    if [ "$THREADS" -eq "0" ]; then
+        echo "CRITICAL: process not running"
+        exit 2;
+    elif [ "$THREADS" -ge "$CRIT" ]; then
         echo "CRITICAL: $THREADS threads running"
         exit 2;
     elif [ "$THREADS" -ge "$WARN" ]; then
