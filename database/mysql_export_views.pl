@@ -83,20 +83,17 @@ while (my @row = $viewlist->fetchrow_array) {
     my $view = $row[0];
     my $createview = $dbh->prepare("SHOW CREATE VIEW $view");
     $createview->execute;
-    if ($viewlist->rows != 1) {
-        print "Somethine went wrong retrieving the create view statement for view $view\n";
-        exit 2;
-    }
-
-    my $view_row = $createview->fetchrow_hashref;
-    $createview->finish;
-    if($view_row->{'Create View'}) {
-        print "\n";
-        print "--\n";
-        print "-- Create View statement for $view\n";
-        print "--\n";
-        print $view_row->{'Create View'} . ";\n";
-    }
+    if ($viewlist->rows == 1) {
+        my $view_row = $createview->fetchrow_hashref;
+        $createview->finish;
+        if($view_row->{'Create View'}) {
+            print "\n";
+            print "--\n";
+            print "-- Create View statement for $view\n";
+            print "--\n";
+            print $view_row->{'Create View'} . ";\n";
+        }
+    }    
 }
 $viewlist->finish;
 
