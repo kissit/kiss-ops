@@ -64,7 +64,7 @@ my $user = $options->{'u'};
 my $pass = $options->{'p'};
 
 # Try to open our connection
-my $dbh = DBI->connect("DBI:mysql:database=$db;host=$host;port=3306", $user, $pass);
+my $dbh = DBI->connect("DBI:mysql:database=$db;host=$host;port=3306", $user, $pass, {PrintError => 0}));
 if (not $dbh) {
     print "ERROR: cannot connect to database $db on host $host\n";
     exit 2;
@@ -82,8 +82,8 @@ if ($viewlist->rows <= 0) {
 while (my @row = $viewlist->fetchrow_array) {
     my $view = $row[0];
     my $createview = $dbh->prepare("SHOW CREATE VIEW $view");
-    $createview->execute;
-    if ($viewlist->rows == 1) {
+    my $check = $createview->execute;
+    if ($check) {
         my $view_row = $createview->fetchrow_hashref;
         $createview->finish;
         if($view_row->{'Create View'}) {
