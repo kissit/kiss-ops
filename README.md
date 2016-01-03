@@ -1,8 +1,12 @@
 # kiss-ops
 
-A collection of various scripts, helpers, and monitorint tools that I've developed over the years.  Most items have instructions included at the top in comments. 
+A collection of various scripts, helpers, and monitoring tools that I've developed over the years.  Most items have instructions included at the top in comments. 
 
 Feel free to reach out to me with any questions or if you find issues or would like to request enhancements.
+
+## ansible
+
+Various Ansible tasks & playbooks.  Nothing fancy here.
 
 ## backups
 
