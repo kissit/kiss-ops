@@ -45,12 +45,11 @@
 ##
 ## Instructions
 ## 1. Install required CPAN modules, on CentOS 6.x:
-##     yum install perl-DateTime perl-MIME-Lite perl-Config-Simple
+##     yum install perl-MIME-Lite perl-Config-Simple
 ## 2. Configure your mounts/devices as needed in the ini file.  Documentation and examples are provided in the example file.
 ## 3. Run the script as root passing your desired options
 ##
 use strict;
-use DateTime;
 use MIME::Lite;
 use Config::Simple;
 use File::Basename;
