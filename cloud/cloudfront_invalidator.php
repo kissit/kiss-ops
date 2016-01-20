@@ -40,21 +40,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 class cloudfront_invalidator {
-	private $url;
-	private $access_key;
+    private $url;
+    private $access_key;
     private $secret_key;
     private $dist_id;
-	private $response_code = 0;
+    private $response_code = 0;
     private $response = '';
 
 	// Our standard constructor.  Pass in url to override the standard cloudfront URL.
 	function __construct($access_key = null, $secret_key = null, $dist_id = null, $url = "https://cloudfront.amazonaws.com") {
-		$this->setAwsInfo($access_key, $secret_key, $dist_id, $url);
+        $this->setAwsInfo($access_key, $secret_key, $dist_id, $url);
 	}
 
     // Function to invalidate either a single passed in key or an array of keys.
     // Returns true on success, otherwise an exception is raised.
-	public function invalidate($keys) {
+    public function invalidate($keys) {
         // Validate that we have our AWS creds
         if(!$this->validateAws()) {
             throw new Exception("Required AWS credentials not provided");
@@ -81,12 +81,13 @@ class cloudfront_invalidator {
                 $this->response = $response->response_code . ': Unhandled response code';
                 break;
         }
+
         if(!$return) {
             throw new Exception($this->response);
         } else {
             return true;
         }
-	}
+    }
     
     // Getter for the response code
     public function getResponseCode() {
