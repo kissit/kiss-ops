@@ -47,10 +47,10 @@ class cloudfront_invalidator {
     private $response_code = 0;
     private $response = '';
 
-	// Our standard constructor.  Pass in url to override the standard cloudfront URL.
-	function __construct($access_key = null, $secret_key = null, $dist_id = null, $url = "https://cloudfront.amazonaws.com") {
+    // Our standard constructor.  Pass in url to override the standard cloudfront URL.
+    function __construct($access_key = null, $secret_key = null, $dist_id = null, $url = "https://cloudfront.amazonaws.com") {
         $this->setAwsInfo($access_key, $secret_key, $dist_id, $url);
-	}
+    }
 
     // Function to invalidate either a single passed in key or an array of keys.
     // Returns true on success, otherwise an exception is raised.
