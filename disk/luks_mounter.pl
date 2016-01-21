@@ -110,13 +110,15 @@ if(-e $error_log) {
 	run_system_cmd("rm $error_log");
 }
 
-## Force a refresh of the disk devices
-my $device_refresh_wait = $cfg->param("base.device_refresh_wait");
-run_system_cmd("partprobe > /dev/null 2>&1");
-push(@status_msg, "Refreshed disk devices using partprobe");
-if (length($device_refresh_wait) > 0 && $device_refresh_wait > 0) {
-    push(@status_msg, "Sleeping $device_refresh_wait seconds to allow the devices to stabilize");
-    sleep($device_refresh_wait);
+## Force a refresh of the disk devices (only if we are mounting)
+if ($do_mount == 1) {
+    my $device_refresh_wait = $cfg->param("base.device_refresh_wait");
+    run_system_cmd("partprobe > /dev/null 2>&1");
+    push(@status_msg, "Refreshed disk devices using partprobe");
+    if (length($device_refresh_wait) > 0 && $device_refresh_wait > 0) {
+        push(@status_msg, "Sleeping $device_refresh_wait seconds to allow the devices to stabilize");
+        sleep($device_refresh_wait);
+    }
 }
 
 ## Alright, lets start processing our mounts
