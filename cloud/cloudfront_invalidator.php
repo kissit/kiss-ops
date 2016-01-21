@@ -78,7 +78,7 @@ class cloudfront_invalidator {
                 $this->response = '403: Forbidden. Please check your security settings.';
                 break;
             default:
-                $this->response = $response->response_code . ': Unhandled response code';
+                $this->response = $this->response_code . ': Unhandled response code';
                 break;
         }
 
