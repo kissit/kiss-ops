@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+#
+## dirs_to_s3
+##
+## Copyright (C) 2016 KISS IT Consulting <http://www.kissitconsulting.com/>
+
+## Redistribution and use in source and binary forms, with or without
+## modification, are permitted provided that the following conditions
+## are met:
+## 
+## 1. Redistributions of source code must retain the above copyright
+##    notice, this list of conditions and the following disclaimer.
+## 2. Redistributions in binary form must reproduce the above
+##    copyright notice, this list of conditions and the following
+##    disclaimer in the documentation and/or other materials
+##    provided with the distribution.
+## 
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+## "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+## LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+## A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL ANY
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+## PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+## OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+## NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##
+## Requires the following
+## 1. The s3cmd tool installed & configured with a user with upload permissions. 
+##    Must be a newer version that supports the multipart-chunk-size option
+##
+## These are the default settings used if not passed in via the options.  Change if desired.
+PATHLIST=
+LOCALDIR=/var/mysqlbackup
+LOCALEXPIRE=3
+S3BUCKET=
+CHUNKSIZEMB=100
+DIRPREFIX=files_to_s3
+
+##################################################################################
+## Nothing below here should need changed for normal cases
+##################################################################################
+usage()
+{
+cat << EOF
+usage: $0 options
+
+This script is used to backup a directory or directories to local disk using tar
+and then store the compressed files in S3.  It requires the following:
+
+1. The s3cmd tool installed & configured with a user with upload permissions. Must be a newer version that supports the multipart-chunk-size option.
+
+OPTIONS:
+   -h   Show this message
+   -s   S3 Bucket name (required)
+   -p   One or more paths to backup, separated by spaces (required)
+   -d   Local backup directory (default: /var/mysqlbackup)
+   -e   Expiration of local backups in days (default: 3)
+EOF
+}
+
+while getopts "hd:e:s:p:" OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         p)
+             PATHLIST=$OPTARG
+             ;;
+         d)
+             LOCALDIR=$OPTARG
+             ;;
+         s)
+             S3BUCKET=$OPTARG
+             ;;
+         e)
+             LOCALEXPIRE=$OPTARG
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+
+if [[ -z $PATHLIST ]] || [[ -z $LOCALDIR ]] || [[ -z $S3BUCKET ]] || [[ -z $LOCALEXPIRE ]]
+then
+     usage
+     exit 1
+fi
+
+CURRENT=$DIRPREFIX-`date +'%Y%m%d_%H%M%S'`
+BACKUPDIR="$LOCALDIR/$CURRENT"
+
+echo "+---- Starting backup process at `date +'%Y-%m-%d %H:%M:%S'` ----+"
+echo "Creating backup directory $BACKUPDIR"
+mkdir -p $BACKUPDIR
+
+for BACKUP in $PATHLIST
+do
+    if [ -d $BACKUP ]; then
+        BACKUPFILE="$BACKUPDIR/$BACKUP.sql.gz"
+        echo "Backing up path $BACKUP and compressing as $BACKUPFILE"
+        tar czf $BACKUPFILE -C $BACKUP .
+    else
+        echo "Skipping non directory $BACKUP"
+    fi
+done
+
+echo "Syncing directory $BACKUPDIR to S3 bucket $S3BUCKET"
+s3cmd --multipart-chunk-size-mb=$CHUNKSIZEMB sync $BACKUPDIR s3://$S3BUCKET
+
+echo "Purging local directory $LOCALDIR to $LOCALEXPIRE days"
+find $LOCALDIR -maxdepth 1 -type d -name '$DIRPREFIX*' -mtime +$LOCALEXPIRE -exec rm -rf {} \;
+
+echo "+---- Backup process finished at `date +'%Y-%m-%d %H:%M:%S'` ----+"
+exit 0;
