@@ -33,7 +33,7 @@
 ##
 ## These are the default settings used if not passed in via the options.  Change if desired.
 PATHLIST=
-LOCALDIR=/var/mysqlbackup
+LOCALDIR=/tmp/backups
 LOCALEXPIRE=3
 S3BUCKET=
 CHUNKSIZEMB=100
@@ -103,7 +103,9 @@ mkdir -p $BACKUPDIR
 for BACKUP in $PATHLIST
 do
     if [ -d $BACKUP ]; then
-        BACKUPFILE="$BACKUPDIR/$BACKUP.sql.gz"
+        BACKUPNAME=${BACKUP//\//_}
+        BACKUPFILE="$BACKUPDIR/$BACKUPNAME.tar.gz"
+        BACKUPNAME=${BACKUP/\//_}
         echo "Backing up path $BACKUP and compressing as $BACKUPFILE"
         tar czf $BACKUPFILE -C $BACKUP .
     else
