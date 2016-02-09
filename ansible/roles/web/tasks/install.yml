@@ -1,0 +1,32 @@
+---
+- name: "Install IUS repo"
+  yum: name="https://dl.iuscommunity.org/pub/ius/stable/CentOS/6/x86_64/ius-release-1.0-14.ius.centos6.noarch.rpm" state=present
+
+- name: "Install HTTPD packages and enable startup on boot"
+  yum: name={{ item }} state=latest
+  with_items:
+    - httpd
+    - httpd-devel
+    - httpd-tools
+  notify: enable httpd
+
+- name: "Install PHP packages"
+  yum: name={{ item }} state=latest
+  with_items:
+    - php56u
+    - php56u-cli
+    - php56u-common
+    - php56u-devel
+    - php56u-gd
+    - php56u-gmp
+    - php56u-mbstring
+    - php56u-mcrypt
+    - php56u-mysqlnd
+    - php56u-opcache
+    - php56u-pear
+    - php56u-pecl-igbinary
+    - php56u-pecl-jsonc
+    - php56u-pecl-jsonc-devel
+    - php56u-pecl-redis
+    - php56u-process
+    - php56u-xml

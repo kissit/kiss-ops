@@ -1,0 +1,12 @@
+---
+- name: "Configure our custom httpd configuration file for system wide settings"
+  template: backup=yes src="httpd_custom.conf" dest="/etc/httpd/conf.d/httpd_custom.conf"
+  notify: restart httpd
+
+- name: "Configure our httpd vhost configurations"
+  template: backup=yes src="default_vhost.conf" dest="/etc/httpd/conf.d/{{ vhost_name }}.conf"
+  notify: restart httpd
+
+- name: "Configure our custom PHP configuration file to override the defaults as needed"
+  template: backup=yes src="php_custom.ini" dest="/etc/php.d/php_custom.ini"
+  notify: restart httpd

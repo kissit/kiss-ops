@@ -1,0 +1,3 @@
+---
+php_timezone: America/New_York
+php_memory_limit: 64M

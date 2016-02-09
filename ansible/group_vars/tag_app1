@@ -1,0 +1,4 @@
+---
+vhost_name: app1
+vhost_server_name: app1.domain.com
+vhost_directory: /var/www/app1

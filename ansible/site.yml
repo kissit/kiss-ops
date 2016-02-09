@@ -1,0 +1,8 @@
+---
+- hosts: tag_web
+  sudo: yes
+  gather_facts: False
+  tags:
+  - web
+  roles:
+  - web
