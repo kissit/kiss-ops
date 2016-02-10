@@ -106,6 +106,7 @@ if(-e $error_log) {
 for my $dir (@final_dirs) {
     my $check = 0;
     my $rsync = $cfg->param("$dir.rsync");
+    my $sudo = $cfg->param("$dir.sudo");
     my $source = $cfg->param("$dir.source");
     my $dest = $cfg->param("$dir.dest");
     push(@status_msg, "\nProcessing directory $dir (source: $source, dest: $dest, rsync: $rsync)");
@@ -117,12 +118,18 @@ for my $dir (@final_dirs) {
             push(@status_msg, "Directories are valid, starting to sync");
 
             ## Run our sync based on our type.  Keep track of our timings for log/output.
+            if($sudo eq 'yes') {
+                $sudo = 'sudo';
+            } else  {
+                $sudo = '';
+            }
+
             my $start = DateTime->now;
             if($rsync eq 'yes') {
-                $check = run_system_cmd( "$rsync_path $rsync_options $source $dest >> $error_log 2>&1" );
+                $check = run_system_cmd( "$sudo $rsync_path $rsync_options $source $dest >> $error_log 2>&1" );
             } else {
                 $source =~ s/(.*\/)$/$source\*/;
-                $check = run_system_cmd( "$cp_path -a $source $dest >> $error_log 2>&1" );
+                $check = run_system_cmd( "$sudo $cp_path -a $source $dest >> $error_log 2>&1" );
             }
             my $end = DateTime->now;
             my $diff = $end->subtract_datetime($start);
