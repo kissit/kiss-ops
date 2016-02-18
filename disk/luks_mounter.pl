@@ -97,6 +97,8 @@ my $cfg = new Config::Simple($config) or die Config::Simple->error();
 my $key_file = $cfg->param("base.key_file");
 my $set_user = $cfg->param("base.set_user");
 my $set_group = $cfg->param("base.set_group");
+my @mount_tasks = $cfg->param("base.mount_tasks");
+my @unmount_tasks = $cfg->param("base.unmount_tasks");
 
 ## Before going any further, validate that we have mounts configured
 my @mounts = $cfg->param("base.mounts");
@@ -110,14 +112,25 @@ if(-e $error_log) {
 	run_system_cmd("rm $error_log");
 }
 
+## Run any pre tasks we may have
+
 ## Force a refresh of the disk devices (only if we are mounting)
 if ($do_mount == 1) {
+
     my $device_refresh_wait = $cfg->param("base.device_refresh_wait");
     run_system_cmd("partprobe > /dev/null 2>&1");
     push(@status_msg, "Refreshed disk devices using partprobe");
     if (length($device_refresh_wait) > 0 && $device_refresh_wait > 0) {
         push(@status_msg, "Sleeping $device_refresh_wait seconds to allow the devices to stabilize");
         sleep($device_refresh_wait);
+    }
+}
+
+## If we're unmounting, run any unmount tasks before we do
+if ($do_unmount == 1) {
+    for my $task (@unmount_tasks) {
+        run_system_cmd("$task > /dev/null 2>&1");
+        push(@status_msg, "Ran unmount task $task before processing the unmounts");
     }
 }
 
@@ -236,6 +249,14 @@ for my $mount (@mounts) {
         } else {
             push(@status_msg, "$mount_point is not mounted, nothing to do");
         }
+    }
+}
+
+## If we're mounting, run any mount tasks after we do
+if ($do_mount == 1) {
+    for my $task (@mount_tasks) {
+        run_system_cmd("$task > /dev/null 2>&1");
+        push(@status_msg, "Ran mount task $task after processing the unmounts");
     }
 }
 
