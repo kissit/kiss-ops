@@ -1,0 +1,8 @@
+---
+- hosts: x.x.x.x
+  sudo: yes
+  gather_facts: False
+  roles:
+  - nagios
+  vars:
+    current_hosts: []

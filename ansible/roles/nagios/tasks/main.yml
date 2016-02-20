@@ -1,0 +1,25 @@
+## Playbook to auto configure hosts and checks in our nagios server
+---
+- name: "Get list of previous host configs"
+  shell: ls -1 /etc/nagios/hosts/ | sed -e 's/\.[^\.]*$//'
+  register: previous_hosts
+
+- name: "Create a cfg file for each host"
+  template: src="linux_server.cfg" dest="/etc/nagios/hosts/{{ item }}.cfg"
+  with_items: groups['ec2']
+  when: hostvars[item].ec2_state == 'running' and hostvars[item].ec2_tag_nagios_hostgroups is defined
+
+- name: "Remove stale hosts"
+  file: path="/etc/nagios/hosts/{{ item }}.cfg" state=absent
+  with_items: previous_hosts.stdout_lines
+  when: item not in groups['ec2'] or hostvars[item].ec2_tag_nagios_hostgroups is undefined
+
+- name: "Update our hostgroup configurations"
+  template: src="hostgroup_{{ item }}.cfg" dest="/etc/nagios/hostgroups/{{ item }}.cfg"
+  with_items:
+    - nrpe
+    - web
+    - redis
+
+- name: "Restart Nagios"
+  service: name=nagios state=restarted
