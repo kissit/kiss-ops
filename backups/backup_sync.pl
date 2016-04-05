@@ -60,7 +60,7 @@ GetOptions("help" => \$help, "dirs=s" => \$dirs, "config=s" => \$config);
 
 if ($help) {
         print <<INFO;
-$0: Mount or unmount the devices as configured in the config file
+$0: sync two directories using rsync or plain cp based on the provided configuration file
  Usage: luks_mounter.pl [--dirs=test1,test2] [ --config ]
     --dirs          - Comma separated list of directory configurations from the config file to process. (Default: all configured directories)
     --config        - Alternate config file (Default: $config)
