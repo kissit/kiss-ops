@@ -117,12 +117,14 @@ for my $backup (@final_backups) {
     my $hostname = $cfg->param("$backup.hostname");
     my $retention_days = $cfg->param("$backup.retention_days");
     my $retention_months = $cfg->param("$backup.retention_months");
+    my $start = DateTime->now;
 
-    push(@status_msg, "\nProcessing backup configuration: $backup\n-----------------------------------------------------------");
+    push(@status_msg, "\nProcessing backup configuration: $backup");
+    push(@status_msg, "---------------------------------------------------------------------------------------");
 
     ## Determine our base mysqldump command to use for the config
     if (length($login_path) > 0) {
-        $mysqldump_cmd = "$mysqldump --login-path=$login_path";
+        $mysqldump_cmd = "$mysqldump --login-path=$login_path -h $hostname";
     } else {
         $mysqldump_cmd = "$mysqldump -h $hostname -u $username";
         if($password) {
@@ -265,6 +267,12 @@ for my $backup (@final_backups) {
         } else {
             push (@status_msg, "Monthly retention not applicable, will not process monthly retentions");
         }
+
+        my $end = DateTime->now;
+        my $diff = $end->subtract_datetime($start);
+        my $timestr = $diff->in_units('hours') . ":" . $diff->in_units('minutes') . ":" . $diff->in_units('seconds');
+        push(@status_msg, "\nFINISHED BACKUP CONFIGURATION: $backup in $timestr");
+        push(@status_msg, "---------------------------------------------------------------------------------------");
     } else {
         $status = 1;
         push (@status_msg, "No tables found to backup");
