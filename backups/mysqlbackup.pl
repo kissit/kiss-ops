@@ -240,7 +240,7 @@ for my $backup (@final_backups) {
         }
 
         ## Now, if today is the first of the month and we're keeping monthly snaps process those retentions
-        if($status == 0 && $retention_months > 0 && $day == 5) {
+        if($status == 0 && $retention_months > 0 && $day == 1) {
             ## Here is where our montly backups are
             my $month_backup_dir = "$main_backup_dir/$backup/monthly";
 
