@@ -70,10 +70,10 @@ USEPCT=`echo "scale=3; $REALMEMUSED / $MEMTOTAL * 100" |$BC -l`
 #then echo it is greater
 #else echo it is not greater
 #fi
-if [ `echo "$USEPCT > $CRITLEVEL" |bc` -eq 1 ]
+if [ `echo "$USEPCT >= $CRITLEVEL" |bc` -eq 1 ]
 then echo "CRITICAL - Memory usage is ${USEPCT}%"
      exit ${CRITICAL_STATE}
-elif [ `echo "$USEPCT > $WARNLEVEL" |bc` -eq 1 ]
+elif [ `echo "$USEPCT >= $WARNLEVEL" |bc` -eq 1 ]
 then echo "WARNING - Memory usage is ${USEPCT}%"
      exit ${WARNING_STATE}
 elif [ `echo "$USEPCT < $WARNLEVEL" |bc` -eq 1 ]
