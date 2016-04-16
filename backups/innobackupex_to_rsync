@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+#
+## innobackupex_to_rsync - Run innobackup's on a DB server and rsync them to another 
+## host for safe keeping.
+##
+## Copyright (C) 2015 KISS IT Consulting <http://www.kissitconsulting.com/>
+##
+## Redistribution and use in source and binary forms, with or without
+## modification, are permitted provided that the following conditions
+## are met:
+## 
+## 1. Redistributions of source code must retain the above copyright
+##    notice, this list of conditions and the following disclaimer.
+## 2. Redistributions in binary form must reproduce the above
+##    copyright notice, this list of conditions and the following
+##    disclaimer in the documentation and/or other materials
+##    provided with the distribution.
+## 
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+## "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+## LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+## A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL ANY
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+## PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+## OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+## NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##
+## Requires the following
+## 1. The innobackupex script installed (part of percona xtrabackup).  
+## https://www.percona.com/doc/percona-server/5.5/installation/yum_repo.html
+##
+##
+## These are default paths to executables, change as needd
+INNOBACKUPEXPATH=/usr/bin/innobackupex
+GZIPPATH=/usr/bin/gzip
+RSYNCPATH=/usr/bin/rsync
+
+## These are the default settings used if not passed in via the options.  Change if desired.
+DBUSER=root
+DBPASS=
+LOCALDIR=/var/lib/innobackupex
+LOCALEXPIRE=3
+TODAY=`date +'%Y%m%d_%H%M%S'`
+REMOTE_HOST=
+REMOTE_DIR=/var/lib/innobackupex
+
+##################################################################################
+## Nothing below here should need changed for normal cases
+##################################################################################
+usage()
+{
+cat << EOF
+usage: $0 options
+
+Run innobackup's on a DB server and rsync them to another host for safe keeping.
+
+OPTIONS:
+   -h   Show this message
+   -u   DB user (default: root)
+   -p   DB pass (default: <empty>)
+   -d   Local backup directory (default: /var/lib/innobackupex)
+   -r   Remote host to sync backups to (default: <empty>)
+   -x   Remote directory to sync local directory to (default: /var/lib/innobackupex)
+   -e   Expiration of local backups in days (default: 3)
+EOF
+}
+
+while getopts "hu:d:p:r:e:x:" OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         u)
+             DBUSER=$OPTARG
+             ;;
+         d)
+             LOCALDIR=$OPTARG
+             ;;
+         p)
+             DBPASS=$OPTARG
+             ;;
+         e)
+             LOCALEXPIRE=$OPTARG
+             ;;
+         r)
+             REMOTE_HOST=$OPTARG
+             ;;
+         x)
+             REMOTE_DIR=$OPTARG
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+
+## Check for required options
+if [[ -z $DBUSER ]] || [[ -z $LOCALDIR ]] || [[ -z $LOCALEXPIRE ]]
+then
+     usage
+     exit 1
+fi
+
+## Check that the target directory exists
+if [[ ! -d $LOCALDIR ]]
+then
+    echo "Local directory does not exist"
+    usage
+    exit 1
+fi
+
+if [[ -z $DBPASS ]]
+then
+    PASSPARM=
+else
+    PASSPARM="--password=$DBPASS"
+fi
+
+echo "+---- Starting backup process at `date +'%Y-%m-%d %H:%M:%S'` ----+"
+echo "Starting innobackupex processing..."
+$INNOBACKUPEXPATH --user $DBUSER $PASSPARM --stream=tar /tmp | $GZIPPATH - > /$LOCALDIR/backup_full_$TODAY.tar.gz
+
+echo "Purging local directory $LOCALDIR to $LOCALEXPIRE days..."
+find $LOCALDIR/ -maxdepth 1 -type f -mtime +$LOCALEXPIRE -delete
+
+if [[ -z $REMOTE_HOST ]] || [[ -z REMOTE_DIR ]]
+then
+    echo "Remote host not specified, remote sync skipped..."
+else
+    echo "Syncing directory $LOCALDIR to $REMOTE_HOST:/$REMOTE_DIR"
+    $RSYNCPATH -av --progress --human-readable --stats $LOCALDIR/ $REMOTE_HOST:/$REMOTE_DIR/
+fi
+
+echo "+---- Backup process finished at `date +'%Y-%m-%d %H:%M:%S'` ----+"
+exit 0;
