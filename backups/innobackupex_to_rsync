@@ -3,7 +3,7 @@
 ## innobackupex_to_rsync - Run innobackup's on a DB server and rsync them to another 
 ## host for safe keeping.
 ##
-## Copyright (C) 2015 KISS IT Consulting <http://www.kissitconsulting.com/>
+## Copyright (C) 2016 KISS IT Consulting <http://www.kissitconsulting.com/>
 ##
 ## Redistribution and use in source and binary forms, with or without
 ## modification, are permitted provided that the following conditions
