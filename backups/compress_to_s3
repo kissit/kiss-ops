@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+#
+## compress_to_s3
+##
+## Copyright (C) 2016 KISS IT Consulting <http://www.kissitconsulting.com/>
+
+## Redistribution and use in source and binary forms, with or without
+## modification, are permitted provided that the following conditions
+## are met:
+## 
+## 1. Redistributions of source code must retain the above copyright
+##    notice, this list of conditions and the following disclaimer.
+## 2. Redistributions in binary form must reproduce the above
+##    copyright notice, this list of conditions and the following
+##    disclaimer in the documentation and/or other materials
+##    provided with the distribution.
+## 
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+## "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+## LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+## A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL ANY
+## CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+## EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+## PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+## PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+## OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+## NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+## SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##
+## Requires the following
+## 1. The s3cmd tool installed & configured with a user with upload permissions. 
+##    Must be a newer version that supports the multipart-chunk-size option
+##
+## These are the default settings used if not passed in via the options.  Change if desired.
+PATHLIST=
+EXPIRE=0
+S3BUCKET=
+CHUNKSIZEMB=100
+
+##################################################################################
+## Nothing below here should need changed for normal cases
+##################################################################################
+usage()
+{
+cat << EOF
+usage: $0 options
+
+This script is used to backup a directory or directories to S3.  It will first compress all 
+needed files in the directory and then sync that directory to an S3 bucket with matching sub directory.
+
+It requires the s3cmd tool to be installed & configured with a user with upload permissions. 
+s3cmd MUST be a newer version that supports the multipart-chunk-size option.
+
+OPTIONS:
+   -h   Show this message
+   -s   S3 Bucket name (required)
+   -p   One or more paths to backup, in quotes, separated by spaces (required)
+   -e   Expiration of local backups in days (default: none)
+EOF
+}
+
+while getopts "he:s:p:" OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         p)
+             PATHLIST=$OPTARG
+             ;;
+         s)
+             S3BUCKET=$OPTARG
+             ;;
+         e)
+             EXPIRE=$OPTARG
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+
+if [[ -z $PATHLIST ]] || [[ -z $S3BUCKET ]] || [[ -z $EXPIRE ]]
+then
+     usage
+     exit 1
+fi
+
+echo "+---- Starting backup process at `date +'%Y-%m-%d %H:%M:%S'` ----+"
+
+for BACKUP in $PATHLIST
+do
+    if [ -d $BACKUP ]; then
+        BACKUPNAME=${BACKUP//\//_}
+
+        echo "Compressing non gzip files in $BACKUP"
+        find $BACKUP/ -type f -not -name "*.gz" -exec gzip {} \;
+
+        echo "Syncing directory $BACKUP to S3 bucket $S3BUCKET/"
+        s3cmd --multipart-chunk-size-mb=$CHUNKSIZEMB sync $BACKUP s3://$S3BUCKET/
+
+        if [ "$EXPIRE" -gt "0" ]; then
+            echo "Purging directory $BACKUP to $EXPIRE days"
+            find $BACKUP/ -type f -mtime +$EXPIRE -delete
+        fi
+    else
+        echo "Skipping non directory $BACKUP"
+    fi
+done
+
+echo "+---- Backup process finished at `date +'%Y-%m-%d %H:%M:%S'` ----+"
+exit 0
