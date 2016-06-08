@@ -36,6 +36,7 @@ PATHLIST=
 EXPIRE=0
 S3BUCKET=
 CHUNKSIZEMB=100
+S3CMD=/usr/local/bin/s3cmd
 
 ##################################################################################
 ## Nothing below here should need changed for normal cases
@@ -99,7 +100,7 @@ do
         find $BACKUP/ -type f -not -name "*.gz" -not -name ".gitignore" -exec gzip {} \;
 
         echo "Syncing directory $BACKUP to S3 bucket $S3BUCKET/"
-        s3cmd --multipart-chunk-size-mb=$CHUNKSIZEMB sync $BACKUP s3://$S3BUCKET/
+        $S3CMD --multipart-chunk-size-mb=$CHUNKSIZEMB sync $BACKUP s3://$S3BUCKET/
 
         if [ "$EXPIRE" -gt "0" ]; then
             echo "Purging directory $BACKUP to $EXPIRE days"
