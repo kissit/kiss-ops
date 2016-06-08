@@ -96,7 +96,7 @@ do
         BACKUPNAME=${BACKUP//\//_}
 
         echo "Compressing non gzip files in $BACKUP"
-        find $BACKUP/ -type f -not -name "*.gz" -exec gzip {} \;
+        find $BACKUP/ -type f -not -name "*.gz" -not -name ".gitignore" -exec gzip {} \;
 
         echo "Syncing directory $BACKUP to S3 bucket $S3BUCKET/"
         s3cmd --multipart-chunk-size-mb=$CHUNKSIZEMB sync $BACKUP s3://$S3BUCKET/
