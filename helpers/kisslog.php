@@ -27,46 +27,43 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 class kisslog {
-	private $log_dir = '';
-	private $log_file = '';
+    private $log_dir = '';
+    private $log_file = '';
     private $debug_log = '';
-	private $email_address = '';
-	private $email_subject = '';
-	private $display = '';
-	private $summary_message = '';
-	private $debug_flag = '';
+    private $email_address = '';
+    private $email_subject = '';
+    private $from_address = '';
+    private $display = '';
+    private $summary_message = '';
+    private $debug_flag = '';
 
-	function __construct($opts = array()) {
-		$this->log_dir = isset($opts['log_dir']) ? $opts['log_dir'] : realpath(dirname(__FILE__).'/../logs');
-		$this->log_file	= "{$this->log_dir}/" . (isset($opts['log_file']) ? $opts['log_file'] : 'messages.log');
+    function __construct($opts = array()) {
+        $this->log_dir = isset($opts['log_dir']) ? $opts['log_dir'] : realpath(dirname(__FILE__).'/../logs');
+        $this->log_file    = "{$this->log_dir}/" . (isset($opts['log_file']) ? $opts['log_file'] : 'messages.log');
         $this->summary_log = "/tmp/kiss_summary.log";
-		$this->debug_log = $this->log_dir . '/debug.log';
-		$this->email_address = isset($opts['email_address']) ? $opts['email_address'] : '';
-		$this->email_subject = isset($opts['email_subject']) ? $opts['email_subject'] : 'error log notification';
-		$this->display = isset($opts['display']) ? $opts['display'] : true;
-		$this->debug_flag = isset($opts['debug_flag']) ? $opts['debug_flag'] : false;
-	}
+        $this->debug_log = $this->log_dir . '/debug.log';
+        $this->email_address = isset($opts['email_address']) ? $opts['email_address'] : '';
+        $this->email_subject = isset($opts['email_subject']) ? $opts['email_subject'] : 'error log notification';
+        $this->from_address = isset($opts['from_address']) ? $opts['from_address'] : 'no-reply@domain.com';
+        $this->display = isset($opts['display']) ? $opts['display'] : true;
+        $this->debug_flag = isset($opts['debug_flag']) ? $opts['debug_flag'] : false;
+    }
 
     // Methods to set some things that we may want to toggle during processing for various reasons
-	public function setDebug($debug) {
-		$this->debug_flag = (bool)$debug;
-	}
-	public function setDisplay($display) {
-		$this->display = (bool)$display;
-	}
-	public function setEmailAddress($email_address) {
-		$this->email_address = (string)$email_address;
-	}
-	public function setEmailSubject($email_subject) {
-		$this->email_subject = (string)$email_subject;
-	}
-
-    // Private methods to email, display, and write our messages as needed
-    private function emailMessage($message) {
-        if (!empty($this->email_address)) {
-            mail($this->email_address, $this->email_subject, $message);
-        }
+    public function setDebug($debug) {
+        $this->debug_flag = (bool)$debug;
     }
+    public function setDisplay($display) {
+        $this->display = (bool)$display;
+    }
+    public function setEmailAddress($email_address) {
+        $this->email_address = (string)$email_address;
+    }
+    public function setEmailSubject($email_subject) {
+        $this->email_subject = (string)$email_subject;
+    }
+
+    // Private methods to display, and write our messages as needed
     private function displayMessage($message) {
         if ($this->display) {
             echo $message;
@@ -77,16 +74,27 @@ class kisslog {
         error_log($message, 3, $this->log_file);
     }
 
+    // Function to send an email message
+    public function emailMessage($message, $to = null) {
+        if(empty($to)) {
+            $to = $this->email_address;
+        }
+        if (!empty($to)) {
+            $headers = "From: {$this->from_address}\r\nReply-To: {$this->from_address}";
+            mail($to, $this->email_subject, $message, $headers);
+        }
+    }
+
     // Method to log an error.  Can optionally have it sent as an email, execution stopped, 
     // and written to a summary log for batch processing
-	public function error($message, $stop = false, $email_notif = false, $summary_log = false) {
-		if (!empty($message)) {
-			$message = date('Y-m-d H:i:s'). ": ERROR -> $message\n";
-			$this->summary_message .= $message;
-			
+    public function error($message, $stop = false, $email_notif = false, $summary_log = false) {
+        if (!empty($message)) {
+            $message = date('Y-m-d H:i:s'). ": ERROR -> $message\n";
+            $this->summary_message .= $message;
+
             $this->displayMessage($message);
-            $this->writeMessage($message);			
-            
+            $this->writeMessage($message);
+
             if($summary_log) {
                 $this->writeMessage($message, $this->summary_log);
             }
@@ -95,38 +103,38 @@ class kisslog {
                 $this->emailMessage($message);
             }
 
-			if ($stop === true) {
-				exit();
-			}
-		}
-	}
-	
+            if ($stop === true) {
+                exit();
+            }
+        }
+    }
+    
     // Method to log a message, no real special options here.
-	public function message($message) {
-		if (!empty($message)) {
-			$message = date('Y-m-d H:i:s'). ": MESSAGE -> $message\n";
-			$this->summary_message .= $message;
-			$this->displayMessage($message);
+    public function message($message) {
+        if (!empty($message)) {
+            $message = date('Y-m-d H:i:s'). ": MESSAGE -> $message\n";
+            $this->summary_message .= $message;
+            $this->displayMessage($message);
             $this->writeMessage($message);
-		}
-	}
+        }
+    }
 
     // Method to put debug statements in your code that can be turned off but left in place at the cost of a single if check on a bool
-	public function debug($message) {
-		if($this->debug_flag && !empty($message)) {
-			$message = date('Y-m-d H:i:s'). ": DEBUG -> $message\n";
-			$this->summary_message .= $message;
-			$this->displayMessage($message);
+    public function debug($message) {
+        if($this->debug_flag && !empty($message)) {
+            $message = date('Y-m-d H:i:s'). ": DEBUG -> $message\n";
+            $this->summary_message .= $message;
+            $this->displayMessage($message);
             $this->writeMessage($message);
-		}
-	}
+        }
+    }
 
     // Method to send a summary of all messages from a run of a given process.
-	public function sendSummary($prepend = '') {
+    public function sendSummary($prepend = '') {
         if(!empty($prepend)) {
             $this->summary_message = $prepend . "\n\n" . $this->summary_message;
         }
         $this->emailMessage($this->summary_message);
-	}
+    }
 }
 ?>
