@@ -38,7 +38,7 @@
 ##
 ## Instructions
 ## 1. Install required CPAN modules, on CentOS 6.x:
-##     yum install perl-MIME-Lite perl-Config-Simple perl-DateTime
+##     yum install perl-MIME-Lite perl-Config-Simple perl-DateTime perl-LockFile-Simple
 ## 2. Configure your directories to sync as needed in the ini file.  Documentation and examples are provided in the example file.
 ## 3. Run the script as a user that has permissions to read/write as needed, passing your desired options
 ##
@@ -48,6 +48,7 @@ use Config::Simple;
 use File::Basename;
 use Getopt::Long;
 use DateTime;
+use LockFile::Simple qw(lock trylock unlock);
 
 ## Get our command line options
 my $dirname = dirname(__FILE__);
@@ -61,7 +62,7 @@ GetOptions("help" => \$help, "dirs=s" => \$dirs, "config=s" => \$config);
 if ($help) {
         print <<INFO;
 $0: sync two directories using rsync or plain cp based on the provided configuration file
- Usage: luks_mounter.pl [--dirs=test1,test2] [ --config ]
+ Usage: backup_sync.pl [--dirs=test1,test2] [ --config ]
     --dirs          - Comma separated list of directory configurations from the config file to process. (Default: all configured directories)
     --config        - Alternate config file (Default: $config)
     --help          - This help page
@@ -79,6 +80,14 @@ my $rsync_options = $cfg->param("base.rsync_options");
 my @config_dirs = $cfg->param("base.dirs");
 if(!@config_dirs) {
     die "No directories configured, nothing to do."
+}
+
+## Next try to get a lock for our state, if we don't that means another process is already running (or something is wrong)
+my $lockfile = $cfg->param("base.lock_file");
+my $lockmgr = LockFile::Simple->make(-hold => 0, -max => 1, -delay => 1, -stale => 0);
+if(!$lockmgr->lock($lockfile)) {
+    die "Could not lock process, another is either running or failed.  Lock file: $lockfile";
+    exit 3;
 }
 
 ## And then if we have some passed in, we need to validate them, if not, we simply take all that are configured
@@ -179,6 +188,9 @@ if(length($email_to) > 0 && length($email_from) > 0) {
 								Data => $email_data);
     $msg->send;
 }
+
+## Unlock our process
+$lockmgr->unlock($lockfile);
 
 exit 0;
 
