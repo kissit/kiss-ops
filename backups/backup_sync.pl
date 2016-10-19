@@ -48,6 +48,7 @@ use Config::Simple;
 use File::Basename;
 use Getopt::Long;
 use DateTime;
+use Data::Dumper;
 use LockFile::Simple qw(lock trylock unlock);
 
 ## Get our command line options
@@ -117,13 +118,15 @@ for my $dir (@final_dirs) {
     my $rsync = $cfg->param("$dir.rsync");
     my $sudo = $cfg->param("$dir.sudo");
     my $source = $cfg->param("$dir.source");
+    my $validate_source = $cfg->param("$dir.validate_source");
     my $dest = $cfg->param("$dir.dest");
+    my $validate_dest = $cfg->param("$dir.validate_dest");
     push(@status_msg, "\nProcessing directory $dir (source: $source, dest: $dest, rsync: $rsync)");
 
     ## Check that our source directory is valid
-    if (-d $source) {
+    if (!$validate_source || -d $validate_source) {
         ## Check that our dest directory is valid
-        if(-d $dest) {
+        if(!$validate_dest || -d $validate_dest) {
             push(@status_msg, "Directories are valid, starting to sync");
 
             ## Run our sync based on our type.  Keep track of our timings for log/output.
@@ -151,11 +154,11 @@ for my $dir (@final_dirs) {
             }
         } else {
             $status = 1;
-            push(@status_msg, "Destination directory $dest not found, skipping this sync.");
+            push(@status_msg, "Destination directory $validate_dest not found, skipping this sync.");
         }
     } else {
         $status = 1;
-        push(@status_msg, "Source directory $source not found, skipping this sync.");
+        push(@status_msg, "Source directory $validate_source not found, skipping this sync.");
     }
 }   
 
