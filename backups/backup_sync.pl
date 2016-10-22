@@ -138,16 +138,20 @@ for my $dir (@final_dirs) {
             }
 
             my $start = DateTime->now;
+            my $final_cmd = "";
             if($rsync eq 'yes') {
                 my $extra_opts = "";
                 if(length($rsync_options_extra) > 0) {
                     $extra_opts = $rsync_options_extra;
                 }
-                $check = run_system_cmd( "$sudo $rsync_path $rsync_options $extra_opts $source $dest >> $error_log 2>&1" );
+                $final_cmd = "$sudo $rsync_path $rsync_options $extra_opts $source $dest";
             } else {
                 $source =~ s/(.*\/)$/$source\*/;
-                $check = run_system_cmd( "$sudo $cp_path -a $source $dest >> $error_log 2>&1" );
+                $final_cmd = "$sudo $cp_path -a $source $dest";
             }
+            push(@status_msg, "Final sync command being used: $final_cmd");
+            $check = run_system_cmd("$final_cmd >> $error_log 2>&1");
+
             my $end = DateTime->now;
             my $diff = $end->subtract_datetime($start);
             my $timestr = $diff->in_units('hours') . ":" . $diff->in_units('minutes') . ":" . $diff->in_units('seconds');
