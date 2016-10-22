@@ -121,7 +121,7 @@ for my $dir (@final_dirs) {
     my $validate_source = $cfg->param("$dir.validate_source");
     my $dest = $cfg->param("$dir.dest");
     my $validate_dest = $cfg->param("$dir.validate_dest");
-    my $rsync_exclude = $cfg->param("$dir.rsync_exclude");
+    my $rsync_options_extra = $cfg->param("$dir.rsync_options_extra");
     push(@status_msg, "\nProcessing directory $dir (source: $source, dest: $dest, rsync: $rsync)");
 
     ## Check that our source directory is valid
@@ -139,12 +139,11 @@ for my $dir (@final_dirs) {
 
             my $start = DateTime->now;
             if($rsync eq 'yes') {
-                if(length($rsync_exclude) > 0) {
-                    $rsync_exclude = "--exclude '$rsync_exclude'";
-                } else {
-                    $rsync_exclude = "";
+                my $extra_opts = "";
+                if(length($rsync_options_extra) > 0) {
+                    $extra_opts = $rsync_options_extra;
                 }
-                $check = run_system_cmd( "$sudo $rsync_path $rsync_options $rsync_exclude $source $dest >> $error_log 2>&1" );
+                $check = run_system_cmd( "$sudo $rsync_path $rsync_options $extra_opts $source $dest >> $error_log 2>&1" );
             } else {
                 $source =~ s/(.*\/)$/$source\*/;
                 $check = run_system_cmd( "$sudo $cp_path -a $source $dest >> $error_log 2>&1" );
