@@ -48,7 +48,7 @@ use Config::Simple;
 use File::Basename;
 use Getopt::Long;
 use DateTime;
-use Data::Dumper;
+use Net::Ping;
 use LockFile::Simple qw(lock trylock unlock);
 
 ## Get our command line options
@@ -121,8 +121,21 @@ for my $dir (@final_dirs) {
     my $validate_source = $cfg->param("$dir.validate_source");
     my $dest = $cfg->param("$dir.dest");
     my $validate_dest = $cfg->param("$dir.validate_dest");
+    my $check_remote = $cfg->param("$dir.check_remote");
     my $rsync_options_extra = $cfg->param("$dir.rsync_options_extra");
     push(@status_msg, "\nProcessing directory $dir (source: $source, dest: $dest, rsync: $rsync)");
+
+    ## If we have a remote check to do, do it
+    if($check_remote) {
+        my $ping = Net::Ping->new();
+        if(!$ping->ping($check_remote)) {
+            ## Yea a little ugly but lets just skip to the next configured sync directory
+            $ping->close();
+            push(@status_msg, "Skipping directory $dir.  Remote check of $check_remote failed.");
+            next;
+        }
+        $ping->close();
+    }
 
     ## Check that our source directory is valid
     if (!$validate_source || -d $validate_source) {
