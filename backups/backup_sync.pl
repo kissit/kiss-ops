@@ -113,7 +113,7 @@ if(-e $error_log) {
 }
 
 ## Alright, lets start processing our directories to sync
-for my $dir (@final_dirs) {
+SYNCDIRS: for my $dir (@final_dirs) {
     my $check = 0;
     my $rsync = $cfg->param("$dir.rsync");
     my $sudo = $cfg->param("$dir.sudo");
@@ -121,18 +121,20 @@ for my $dir (@final_dirs) {
     my $validate_source = $cfg->param("$dir.validate_source");
     my $dest = $cfg->param("$dir.dest");
     my $validate_dest = $cfg->param("$dir.validate_dest");
-    my $check_remote = $cfg->param("$dir.check_remote");
+    my @check_remote = $cfg->param("$dir.check_remote");
     my $rsync_options_extra = $cfg->param("$dir.rsync_options_extra");
     push(@status_msg, "\nProcessing directory $dir (source: $source, dest: $dest, rsync: $rsync)");
 
-    ## If we have a remote check to do, do it
-    if($check_remote) {
+    ## If we have a remote check to do, do it/them
+    if(@check_remote) {
         my $ping = Net::Ping->new();
-        if(!$ping->ping($check_remote)) {
-            ## Yea a little ugly but lets just skip to the next configured sync directory
-            $ping->close();
-            push(@status_msg, "Skipping directory $dir.  Remote check of $check_remote failed.");
-            next;
+        foreach my $check_ip (@check_remote) {
+            if(!$ping->ping($check_ip)) {
+                ## Yea a little ugly but lets just skip to the next configured sync directory
+                $ping->close();
+                push(@status_msg, "Skipping directory $dir.  Remote check of $check_ip failed.");
+                next SYNCDIRS;
+            }
         }
         $ping->close();
     }
