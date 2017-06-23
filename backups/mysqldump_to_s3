@@ -127,7 +127,7 @@ else
 fi
 
 echo "Syncing directory $BACKUPDIR to S3 bucket $S3BUCKET"
-s3cmd --multipart-chunk-size-mb=$CHUNKSIZEMB sync $BACKUPDIR s3://$S3BUCKET
+s3cmd --no-mime-magic --multipart-chunk-size-mb=$CHUNKSIZEMB sync $BACKUPDIR s3://$S3BUCKET
 
 echo "Purging local directory $LOCALDIR to $LOCALEXPIRE days"
 find $LOCALDIR -maxdepth 1 -type d -name "${DIRPREFIX}*" -mtime +$LOCALEXPIRE -exec rm -rf {} \;
