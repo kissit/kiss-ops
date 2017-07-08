@@ -56,7 +56,7 @@ OPTIONS:
    -h   Show this message
    -s   S3 Bucket name (required)
    -p   One or more paths to backup, separated by spaces (required)
-   -d   Local backup directory (default: /var/mysqlbackup)
+   -d   Local backup directory (default: /tmp/backups)
    -e   Expiration of local backups in days (default: 3)
 EOF
 }
