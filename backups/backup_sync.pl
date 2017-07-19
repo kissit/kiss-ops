@@ -48,7 +48,7 @@ use Config::Simple;
 use File::Basename;
 use Getopt::Long;
 use DateTime;
-use Net::Ping;
+use Net::Ping::External qw(ping);
 use LockFile::Simple qw(lock trylock unlock);
 
 ## Get our command line options
@@ -127,16 +127,13 @@ SYNCDIRS: for my $dir (@final_dirs) {
 
     ## If we have a remote check to do, do it/them
     if(@check_remote) {
-        my $ping = Net::Ping->new();
         foreach my $check_ip (@check_remote) {
-            if(!$ping->ping($check_ip)) {
+            if(!ping(hostname => $check_ip)) {
                 ## Yea a little ugly but lets just skip to the next configured sync directory
-                $ping->close();
                 push(@status_msg, "Skipping directory $dir.  Remote check of $check_ip failed.");
                 next SYNCDIRS;
             }
         }
-        $ping->close();
     }
 
     ## Check that our source directory is valid
