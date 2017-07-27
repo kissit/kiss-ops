@@ -107,6 +107,16 @@ CURRENT=$DIRPREFIX-`date +'%Y%m%d_%H%M%S'`
 BACKUPDIR="$LOCALDIR/$CURRENT"
 
 echo "+---- Starting backup process at `date +'%Y-%m-%d %H:%M:%S'` ----+"
+
+if [ $LOCALEXPIRE -gt 0 ]
+then
+    echo "Purging local directory $LOCALDIR to $LOCALEXPIRE days..."
+    find $LOCALDIR -maxdepth 1 -type d -name "${DIRPREFIX}*" -mtime +$LOCALEXPIRE -exec rm -rf {} \;
+else
+    echo "Local backup retention disabled.  Purging all previous backups before starting..."
+    find $LOCALDIR -maxdepth 1 -type d -name "${DIRPREFIX}*" -exec rm -rf {} \;
+fi
+
 echo "Creating backup directory $BACKUPDIR"
 mkdir -p $BACKUPDIR
 
@@ -128,9 +138,6 @@ fi
 
 echo "Syncing directory $BACKUPDIR to S3 bucket $S3BUCKET"
 s3cmd --no-mime-magic --multipart-chunk-size-mb=$CHUNKSIZEMB sync $BACKUPDIR s3://$S3BUCKET
-
-echo "Purging local directory $LOCALDIR to $LOCALEXPIRE days"
-find $LOCALDIR -maxdepth 1 -type d -name "${DIRPREFIX}*" -mtime +$LOCALEXPIRE -exec rm -rf {} \;
 
 echo "+---- Backup process finished at `date +'%Y-%m-%d %H:%M:%S'` ----+"
 exit 0;
