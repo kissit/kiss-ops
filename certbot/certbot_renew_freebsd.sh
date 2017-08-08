@@ -14,6 +14,7 @@
 
 ## Email addresses that should get the notifications
 EMAIL_TO="name@email.com"
+EMAIL_FROM="no-reply@email.com"
 
 ## Paths to our log files
 APACHE_LOGFILE=/var/log/httpd-error.log
@@ -40,7 +41,7 @@ echo "--------------------------------------------------------------------------
 cat $LOGFILE >> $MAILFILE
 
 ## Send our email
-cat $MAILFILE | /usr/local/bin/mailx -s "Certbot auto renew - $HOSTNAME" -r "no-reply@email.com" "$EMAIL_TO"
+cat $MAILFILE | /usr/local/bin/mailx -s "Certbot auto renew - $HOSTNAME" -r "$EMAIL_FROM" "$EMAIL_TO"
 
 rm $MAILFILE
 exit 0;
