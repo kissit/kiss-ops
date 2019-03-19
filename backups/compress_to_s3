@@ -54,7 +54,7 @@ s3cmd MUST be a newer version that supports the multipart-chunk-size option.
 
 OPTIONS:
    -h   Show this message
-   -s   S3 Bucket name (required)
+   -s   S3 Bucket name (required).  Include optional directory inside bucket if desired, ex: my-bucket-name/sub-directory
    -p   One or more paths to backup, in quotes, separated by spaces (required)
    -e   Expiration of local backups in days (default: none)
 EOF
@@ -100,7 +100,7 @@ do
         find $BACKUP/ -type f -not -name "*.gz" -not -name ".gitignore" -exec gzip {} \;
 
         echo "Syncing directory $BACKUP to S3 bucket $S3BUCKET/"
-        $S3CMD --multipart-chunk-size-mb=$CHUNKSIZEMB sync $BACKUP s3://$S3BUCKET/
+        $S3CMD --multipart-chunk-size-mb=$CHUNKSIZEMB --exclude '.git*' sync $BACKUP s3://$S3BUCKET/
 
         if [ "$EXPIRE" -gt "0" ]; then
             echo "Purging directory $BACKUP to $EXPIRE days"
